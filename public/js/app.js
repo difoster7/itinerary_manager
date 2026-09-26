@@ -1,4 +1,5 @@
 import { install as installEdit } from "./edit.js";
+import { install as installExport } from "./export.js";
 import { openingDate, tripDates } from "./model.js";
 import {
   renderCodes,
@@ -293,6 +294,7 @@ setInterval(() => {
 
 export const currentDate = () => view.current;
 installEdit(handlers, { currentDate });
+installExport(handlers);
 
 // ---------- boot ----------
 

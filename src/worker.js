@@ -158,7 +158,7 @@ async function postNotes(request, env) {
 // Stamp the deployment id into sw.js so every deploy updates the worker.
 async function serviceWorker(request, env) {
   const res = await env.ASSETS.fetch(request);
-  const text = (await res.text()).replace(
+  const text = (await res.text()).replaceAll(
     "__APP_VERSION__",
     env.CF_VERSION_METADATA?.id || "dev",
   );
