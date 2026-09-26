@@ -1,20 +1,25 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "itinerary",
-  "main": "src/worker.js",
-  "compatibility_date": "2026-08-15",
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/sw.js"]
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "itinerary",
-      "database_id": "00000000-0000-0000-0000-000000000000",
-      "migrations_dir": "migrations"
-    }
-  ],
-  "version_metadata": { "binding": "CF_VERSION_METADATA" }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "itinerary",
+	"main": "src/worker.js",
+	"compatibility_date": "2026-08-15",
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*",
+			"/sw.js"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "itinerary",
+			"database_id": "23349032-ac80-4336-ad41-d78214a456f9",
+			"migrations_dir": "migrations"
+		}
+	],
+	"version_metadata": {
+		"binding": "CF_VERSION_METADATA"
+	}
 }
