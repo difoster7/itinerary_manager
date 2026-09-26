@@ -30,11 +30,21 @@ function reporter(body) {
   };
 }
 
-// Commits `change` on top of the current data. Returns true when the sheet
-// can close (saved, or the user chose to keep the other device's version).
-export async function saveChange(change, report) {
-  const base = S.state.data;
-  return attempt(base, applyChange(base, change), S.state.version, change, report);
+// The data and version a sheet was opened on. Saving against this (not the
+// live state, which a background refresh may have advanced) is what makes a
+// stale edit hit a 409 instead of silently overwriting.
+export const snapshotBase = () => ({ data: S.state.data, version: S.state.version });
+
+// Commits `change` on top of `base`. Returns true when the sheet can close
+// (saved, or the user chose to keep the other device's version).
+export async function saveChange(change, report, base = snapshotBase()) {
+  return attempt(
+    base.data,
+    applyChange(base.data, change),
+    base.version,
+    change,
+    report,
+  );
 }
 
 async function attempt(base, next, ifMatch, change, report) {
@@ -110,6 +120,7 @@ const offlineNote = () =>
 
 export function openEventSheet(event, date) {
   const isNew = !event;
+  const base = snapshotBase();
   const e = event || { id: crypto.randomUUID(), date, time: "", kind: "activity", title: "" };
   const body = openSheet(`<h3>${isNew ? "New event" : "Edit event"}</h3>
 <form id="evform" novalidate>
@@ -179,7 +190,7 @@ export function openEventSheet(event, date) {
     }
     if (t.closest("[data-del]")) {
       const ok = await confirmDialog(`Delete “${esc(e.title)}”?`, "Delete", "danger");
-      if (ok && (await saveChange({ type: "delete", id: e.id }, report))) {
+      if (ok && (await saveChange({ type: "delete", id: e.id }, report, base))) {
         closeSheet();
         toast("Deleted");
       }
@@ -189,7 +200,7 @@ export function openEventSheet(event, date) {
     ev.preventDefault();
     const btn = form.querySelector('[type="submit"]');
     btn.disabled = true;
-    const ok = await saveChange({ type: "upsert", event: readForm() }, report);
+    const ok = await saveChange({ type: "upsert", event: readForm() }, report, base);
     btn.disabled = !S.conn.online;
     if (ok) {
       closeSheet();
@@ -202,6 +213,7 @@ export function openEventSheet(event, date) {
 
 export function openNightSheet(date) {
   const night = S.state.data.nights[date];
+  const base = snapshotBase();
   const body = openSheet(`<h3>Lodging, night of ${esc(date)}</h3>
 <form id="nform">
   <label class="f" for="n-name">Name</label><input id="n-name" name="name" required>
@@ -222,7 +234,7 @@ export function openNightSheet(date) {
   for (const b of form.querySelectorAll('[type="submit"], [data-clear]')) b.disabled = !online;
   report(offlineNote());
   const save = async (value) => {
-    if (await saveChange({ type: "night", date, night: value }, report)) {
+    if (await saveChange({ type: "night", date, night: value }, report, base)) {
       closeSheet();
       toast("Saved");
     }
@@ -284,7 +296,8 @@ export async function confirmDeleteNote(id) {
 const JSON_TITLES = { cities: "Cities", costs: "Costs", json: "Everything (raw JSON)" };
 
 export function openJsonEditor(kind) {
-  const value = kind === "json" ? S.state.data : S.state.data[kind];
+  const base = snapshotBase();
+  const value = kind === "json" ? base.data : base.data[kind];
   const body = openSheet(`<h3>${JSON_TITLES[kind]}</h3>
 <form id="jform">
   <textarea class="code" name="text" spellcheck="false" aria-label="JSON"></textarea>
@@ -323,7 +336,7 @@ export function openJsonEditor(kind) {
       const { notes, ...rest } = parsed ?? {};
       change = { type: "replace", data: S.withIds(rest) };
     } else change = { type: "field", key: kind, value: parsed };
-    if (await saveChange(change, report)) {
+    if (await saveChange(change, report, base)) {
       closeSheet();
       toast("Saved");
     }

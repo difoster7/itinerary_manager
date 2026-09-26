@@ -207,7 +207,13 @@ export async function addNoteRecord(
   return id;
 }
 
-export async function forget() {
+// Unregistering matters: with the worker still registered, deleting its cache
+// would leave nothing to re-cache the app shell and offline launch would fail.
+export async function forget({
+  sw = globalThis.navigator?.serviceWorker,
+  cacheStorage = globalThis.caches,
+} = {}) {
   await store.clearAll();
-  for (const k of await caches.keys()) await caches.delete(k);
+  for (const r of (await sw?.getRegistrations()) || []) await r.unregister();
+  for (const k of await cacheStorage.keys()) await cacheStorage.delete(k);
 }

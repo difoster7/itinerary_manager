@@ -53,7 +53,9 @@ export function validateItinerary(d) {
     if (e.time && !TIME.test(e.time)) errs.push(`${at}: time must be HH:MM`);
     if (e.end && !TIME.test(e.end)) errs.push(`${at}: end must be HH:MM`);
     if (!KINDS.includes(e.kind)) errs.push(`${at}: unknown kind`);
-    if (!String(e.title || "").trim()) errs.push(`${at}: title required`);
+    if (typeof e.title !== "string" || !e.title.trim()) {
+      errs.push(`${at}: title required`);
+    }
     const notesOk =
       e.notes === undefined ||
       (Array.isArray(e.notes) && e.notes.every((n) => typeof n === "string"));
@@ -65,6 +67,23 @@ export function validateItinerary(d) {
         errs.push(`Night ${k}: needs a date key and a name`);
       }
     }
+  }
+  // Renderers destructure these, so malformed values would break every tab.
+  if (isObj(d.cities)) {
+    for (const [k, c] of Object.entries(d.cities)) {
+      if (typeof c !== "string") errs.push(`City ${k}: must be text`);
+    }
+  }
+  if (Array.isArray(d.costs)) {
+    d.costs.forEach((row, i) => {
+      const cellOk = (c) => ["string", "number"].includes(typeof c);
+      if (!Array.isArray(row) || !row.every(cellOk)) {
+        errs.push(`Cost row ${i + 1}: must be a list of text or numbers`);
+      }
+    });
+  }
+  if (d.tz !== undefined && !/^[+-]\d{2}:\d{2}$/.test(d.tz)) {
+    errs.push('tz must look like "-03:00"');
   }
   return errs;
 }
@@ -84,6 +103,11 @@ export function openingDate(dates, today) {
   if (today <= dates[0]) return dates[0];
   return dates.find((x) => x >= today) || dates[dates.length - 1];
 }
+
+// A resumed app should follow the calendar: once the date changes, jump to
+// the day the app would open on; otherwise keep the day being viewed.
+export const resumeDate = (dates, current, lastToday, today) =>
+  today === lastToday ? current : openingDate(dates, today);
 
 export const dayEvents = (d, iso) =>
   d.events

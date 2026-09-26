@@ -1,6 +1,6 @@
 import { install as installEdit } from "./edit.js";
 import { install as installExport } from "./export.js";
-import { openingDate, tripDates } from "./model.js";
+import { openingDate, resumeDate, tripDates } from "./model.js";
 import {
   renderCodes,
   renderDay,
@@ -11,7 +11,7 @@ import {
 import * as S from "./session.js";
 import { $, confirmDialog, copyText, toast } from "./ui.js";
 
-const view = { current: null, tab: "trip", noteHold: false };
+const view = { current: null, tab: "trip", noteHold: false, lastToday: null };
 const todayISO = () => new Date().toLocaleDateString("en-CA");
 const nowHHMM = () => new Date().toTimeString().slice(0, 5);
 
@@ -36,9 +36,11 @@ export function rerender() {
   const d = S.state.data;
   if (!d) return;
   const dates = tripDates(d);
-  if (!dates.includes(view.current)) {
-    view.current = openingDate(dates, todayISO());
-  }
+  const today = todayISO();
+  view.current = dates.includes(view.current)
+    ? resumeDate(dates, view.current, view.lastToday, today)
+    : openingDate(dates, today);
+  view.lastToday = today;
   const online = S.conn.online;
   $("#banner").hidden = online;
   $("#fab-add").disabled = !online;
@@ -288,8 +290,10 @@ S.conn.subscribe((online) => {
   else rerender();
 });
 S.onChange(() => rerender());
+// Re-render each tick on today (countdowns) and when the date rolls over.
 setInterval(() => {
-  if (view.tab === "trip" && view.current === todayISO()) rerender();
+  const today = todayISO();
+  if (view.current === today || view.lastToday !== today) rerender();
 }, 30000);
 
 export const currentDate = () => view.current;

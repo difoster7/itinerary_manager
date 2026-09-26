@@ -6,18 +6,32 @@ export class ApiError extends Error {
   }
 }
 
-// Network failures reject with fetch's TypeError; HTTP errors with ApiError.
-export function createApi(token, fetchFn = (...a) => fetch(...a)) {
+// Network failures (including timeouts on a stalled connection) reject with
+// TypeError, which callers treat as offline; HTTP errors reject with ApiError.
+export function createApi(
+  token,
+  fetchFn = (...a) => fetch(...a),
+  timeoutMs = 15000,
+) {
   async function call(method, path, { body, ifMatch } = {}) {
     const headers = { authorization: `Bearer ${token}` };
     if (ifMatch !== undefined) headers["if-match"] = String(ifMatch);
     if (body !== undefined) headers["content-type"] = "application/json";
-    const res = await fetchFn(path, {
-      method,
-      headers,
-      cache: "no-store",
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    let res;
+    try {
+      res = await fetchFn(path, {
+        method,
+        headers,
+        cache: "no-store",
+        signal: AbortSignal.timeout(timeoutMs),
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    } catch (e) {
+      if (e?.name === "TimeoutError" || e?.name === "AbortError") {
+        throw new TypeError(`Request timed out: ${path}`);
+      }
+      throw e;
+    }
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new ApiError(res.status, data);
     return data;

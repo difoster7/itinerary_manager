@@ -1,5 +1,5 @@
 // Standalone snapshot, print, and version history.
-import { saveChange } from "./edit.js";
+import { saveChange, snapshotBase } from "./edit.js";
 import { esc, summarize } from "./model.js";
 import { renderSnapshotBody } from "./render.js";
 import * as S from "./session.js";
@@ -104,6 +104,7 @@ async function previewVersion(v) {
     return toast("Couldn't load that version");
   }
   const isCurrent = v === S.state.version;
+  const base = snapshotBase();
   const body = openSheet(`<h3>Version ${v}</h3>
 <p class="hint">${esc(summarize(data))}. Read-only preview.</p>
 <div class="preview">${renderSnapshotBody(data, [], "")}</div>
@@ -123,7 +124,7 @@ ${isCurrent ? "" : '<button type="button" class="btn primary" data-restore>Resto
       [{ label: "Cancel" }, { label: "Restore", cls: "primary" }],
     );
     if (pick !== "Restore") return;
-    if (await saveChange({ type: "replace", data }, report)) {
+    if (await saveChange({ type: "replace", data }, report, base)) {
       closeSheet();
       toast(`Restored version ${v}`);
     }

@@ -31,6 +31,15 @@ describe("api", () => {
       .catch((x) => x);
     expect(e2.status).toBe(401);
   });
+  it("times out a stalled request as a network error", async () => {
+    // Never settles unless aborted, like fetch on a stalled connection.
+    const stall = (_url, init) =>
+      new Promise((_, reject) => {
+        init.signal?.addEventListener("abort", () => reject(init.signal.reason));
+      });
+    const err = await createApi("T", stall, 20).getNotes().catch((x) => x);
+    expect(err).toBeInstanceOf(TypeError);
+  }, 1000);
   it("propagates network errors as-is", async () => {
     const err = new TypeError("Failed to fetch");
     const api = createApi("T", async () => {

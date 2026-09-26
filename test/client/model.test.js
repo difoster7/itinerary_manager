@@ -54,6 +54,20 @@ describe("validateItinerary", () => {
     const bad = data([], { nights: { "2026-11-18": { sub: "no name" } } });
     expect(M.validateItinerary(bad).length).toBe(1);
   });
+  it.each([
+    ["non-string title", { events: [ev({ id: "a", title: 5 })] }],
+    ["cost row not an array", { costs: [{}] }],
+    ["cost row null", { costs: [null] }],
+    ["cost cell an object", { costs: [["a", {}, "c"]] }],
+    ["city not a string", { cities: { "2026-11-18": 5 } }],
+    ["bad tz", { tz: "UTC-3" }],
+  ])("rejects data that would crash rendering: %s", (_, extra) => {
+    expect(M.validateItinerary(data([], extra)).length).toBeGreaterThan(0);
+  });
+  it("accepts numeric cost cells and a missing tz", () => {
+    const { tz, ...noTz } = data([], { costs: [["a", 12, ""]] });
+    expect(M.validateItinerary(noTz)).toEqual([]);
+  });
   it("rejects non-object top-level sections", () => {
     expect(M.validateItinerary({ ...data(), nights: [] }).length).toBeGreaterThan(0);
     expect(M.validateItinerary({ ...data(), costs: {} }).length).toBeGreaterThan(0);
@@ -119,6 +133,16 @@ describe("dayEvents and timelineState", () => {
     expect(M.countdown("09:40", "10:00")).toBe("IN 20 MIN");
     expect(M.countdown("17:30", "20:30")).toBe("IN 3 H");
     expect(M.countdown("08:50", "10:00")).toBe("IN 1 H 10 MIN");
+  });
+});
+
+describe("resumeDate", () => {
+  const ds = ["2026-11-17", "2026-11-18", "2026-11-19"];
+  it("keeps the viewed day while the date hasn't changed", () => {
+    expect(M.resumeDate(ds, "2026-11-17", "2026-11-18", "2026-11-18")).toBe("2026-11-17");
+  });
+  it("jumps to the new today after midnight or a long pause", () => {
+    expect(M.resumeDate(ds, "2026-11-18", "2026-11-18", "2026-11-19")).toBe("2026-11-19");
   });
 });
 
