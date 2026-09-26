@@ -1,0 +1,17 @@
+{
+  "name": "itinerary-manager",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "npm run test:client && npm run test:worker",
+    "test:client": "vitest run -c vitest.config.mjs",
+    "test:worker": "vitest run -c vitest.worker.config.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "vitest": "~4.1.11",
+    "wrangler": "4.141.0"
+  }
+}
