@@ -124,7 +124,7 @@ export function renderDayList(d, dates, selected) {
       const titles = dayEvents(d, iso).map((e) => esc(e.title)).join(" · ");
       return `<button type="button" class="dl${iso === selected ? " on" : ""}" data-date="${iso}">
   <b>${shortDate(iso)}</b><span class="c2">${esc(d.cities[iso] || "")}</span>
-  <span class="ev">${titles || "—"}</span>
+  <span class="pv">${titles || "—"}</span>
 </button>`;
     })
     .join("");
