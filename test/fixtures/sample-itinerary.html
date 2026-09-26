@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sample</title></head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>Sample &amp; Trip</h1>
+    <p class="sub">Solo · test</p>
+  </div>
+</header>
+<script>
+/* Fake data only. Same shape as the real Itinerary.html. */
+const OPEN_ITEMS = [ "<b>Buy</b> gas canister" ];
+const NIGHTS = { "2026-11-13": { name:"Hotel Uno", sub:"Santiago" }, "2026-11-14": { name:"Hotel \"Dos\"" } };
+const CITIES = { "2026-11-13": "Santiago", "2026-11-14": "Puerto Natales" };
+const EVENTS = [
+  // comment with a } brace
+  { date:"2026-11-13", time:"09:00", end:"", kind:"flight", title:"Flight [A]", conf:"FAKE01", notes:["a, b", 'it\'s'], todo:true },
+  { date:"2026-11-14", time:"", kind:"note", title:"Rest day" },
+];
+const COSTS = [ ["Hotel", "$100", "paid"] ];
+const KINDLABEL = {};
+document.getElementById("x");
+</script>
+</body>
+</html>
