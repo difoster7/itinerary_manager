@@ -1,0 +1,12 @@
+# Plaintext itinerary data: never commit
+itinerary-app-brief.md
+Itinerary.html
+seed/
+
+# Cloudflare / Node
+.wrangler/
+.dev.vars
+node_modules/
+
+# Brainstorm mockups
+.superpowers/
