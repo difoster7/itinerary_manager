@@ -115,9 +115,13 @@ export async function unlock(passphrase) {
   return "ok";
 }
 
+// Accepts a seed file or a "Download JSON" export (which also carries notes).
+export const withIds = (d) => (Array.isArray(d?.events) ? ensureIds(d) : d);
+
 // Returns a list of problems, empty on success.
 export async function importData(parsed) {
-  const data = ensureIds(parsed);
+  const { notes: imported = [], ...rest } = parsed ?? {};
+  const data = withIds(rest);
   const errs = validateItinerary(data);
   if (errs.length) return errs;
   const blob = await encryptJson(state.keys.encKey, data);
@@ -131,6 +135,11 @@ export async function importData(parsed) {
     }
     if (e instanceof TypeError) return ["No connection. Try again online."];
     throw e;
+  }
+  for (const n of imported) {
+    if (n?.date && n?.text) {
+      await addNoteRecord({ date: n.date, text: n.text }, n.createdAt, false);
+    }
   }
   await loadLocal();
   changed();
@@ -177,15 +186,19 @@ export async function historyVersion(v) {
 }
 
 // Notes work offline: encrypt, store locally + outbox, then try to upload.
-export async function addNoteRecord(plain) {
+export async function addNoteRecord(
+  plain,
+  createdAt = new Date().toISOString(),
+  sync = true,
+) {
   const id = crypto.randomUUID();
-  const createdAt = new Date().toISOString();
   const rec = { ...plain, createdAt };
   const blob = await encryptJson(state.keys.encKey, rec);
   const row = { id, blob, createdAt };
   await store.put("notes", row);
   await store.put("outbox", row);
   state.noteRecs.set(id, { ...rec, id, queued: true });
+  if (!sync) return id;
   changed();
   navigator.serviceWorker?.ready
     .then((r) => r.sync?.register("outbox"))
