@@ -1,5 +1,8 @@
 const HISTORY_KEEP = 50;
 const MAX_BLOB = 1_000_000;
+const MAX_NOTES_BATCH = 200;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -96,11 +99,90 @@ async function putItinerary(request, env) {
   return json({ version: next, updatedAt: now });
 }
 
+async function history(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT version, updated_at FROM versions ORDER BY version DESC",
+  ).all();
+  return json(
+    results.map((r) => ({ version: r.version, updatedAt: r.updated_at })),
+  );
+}
+
+async function historyVersion(env, v) {
+  if (!/^\d+$/.test(v)) return json({ error: "not found" }, 404);
+  const row = await env.DB.prepare(
+    "SELECT version, blob, updated_at FROM versions WHERE version = ?",
+  )
+    .bind(Number(v))
+    .first();
+  if (!row) return json({ error: "not found" }, 404);
+  return json({
+    version: row.version,
+    blob: row.blob,
+    updatedAt: row.updated_at,
+  });
+}
+
+async function getNotes(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, blob, created_at FROM notes ORDER BY created_at, id",
+  ).all();
+  return json(
+    results.map((r) => ({ id: r.id, blob: r.blob, createdAt: r.created_at })),
+  );
+}
+
+async function postNotes(request, env) {
+  const body = await readJson(request);
+  const ok =
+    Array.isArray(body) &&
+    body.length > 0 &&
+    body.length <= MAX_NOTES_BATCH &&
+    body.every(
+      (n) =>
+        n &&
+        UUID.test(n.id) &&
+        isBlob(n.blob) &&
+        typeof n.createdAt === "string" &&
+        n.createdAt.length <= 40,
+    );
+  if (!ok) return json({ error: "notes" }, 400);
+  // INSERT OR IGNORE makes re-uploads from the outbox idempotent.
+  const stmt = env.DB.prepare(
+    "INSERT OR IGNORE INTO notes (id, blob, created_at) VALUES (?, ?, ?)",
+  );
+  await env.DB.batch(body.map((n) => stmt.bind(n.id, n.blob, n.createdAt)));
+  return json({ ok: true });
+}
+
+// Stamp the deployment id into sw.js so every deploy updates the worker.
+async function serviceWorker(request, env) {
+  const res = await env.ASSETS.fetch(request);
+  const text = (await res.text()).replace(
+    "__APP_VERSION__",
+    env.CF_VERSION_METADATA?.id || "dev",
+  );
+  return new Response(text, {
+    headers: {
+      "content-type": "text/javascript; charset=utf-8",
+      "cache-control": "no-cache",
+    },
+  });
+}
+
 async function api(request, env, path) {
   const m = request.method;
   if (path === "/api/itinerary") {
     if (m === "GET") return getItinerary(env);
     if (m === "PUT") return putItinerary(request, env);
+    return json({ error: "method" }, 405);
+  }
+  if (path === "/api/history" && m === "GET") return history(env);
+  const hv = /^\/api\/history\/([^/]+)$/.exec(path);
+  if (hv && m === "GET") return historyVersion(env, hv[1]);
+  if (path === "/api/notes") {
+    if (m === "GET") return getNotes(env);
+    if (m === "POST") return postNotes(request, env);
     return json({ error: "method" }, 405);
   }
   return json({ error: "not found" }, 404);
@@ -109,6 +191,7 @@ async function api(request, env, path) {
 export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
+    if (path === "/sw.js") return serviceWorker(request, env);
     if (path.startsWith("/api/")) {
       if (!(await authorized(request, env))) {
         return json({ error: "unauthorized" }, 401);
