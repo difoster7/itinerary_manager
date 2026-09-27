@@ -309,7 +309,7 @@ ul.status, .imported { padding-left: 26px; }
   .toast { bottom: 24px; }
   dialog.sheet { width: 600px; max-width: calc(100vw - 32px); margin: auto; border-radius: 18px; }
   .grab { display: none; }
-  .dhd { padding-top: 22px; padding-right: 220px; }
+  .dhd { padding-top: 22px; padding-right: 300px; }
 }
 
 /* ---------- snapshot / print (legacy single-page layout) ---------- */
