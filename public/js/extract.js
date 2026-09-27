@@ -119,7 +119,10 @@ for several legs or events goes only in costs.
     where  departure terminal name and city.
 
   transfer
-    title  "<from> → <to>".
+    title  "<from> → <to>" using short place names: the city when the two
+           ends are in different cities, otherwise the neighbourhood,
+           airport or landmark. Terminals, stations and addresses go in
+           where, never in the title. Example: "Santiago → Valparaíso".
     sub    "<operator> · <vehicle or service type> · <class>, seat <seat> ·
            <price>".
     where  pickup point.
