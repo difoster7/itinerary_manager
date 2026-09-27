@@ -55,25 +55,27 @@ export function rerender() {
     $(`#view-${t}`).hidden = t !== view.tab;
   }
   $("#fabs").hidden = view.tab !== "trip";
-  const notes = S.notes();
   if (view.tab === "trip") {
     $("#day").innerHTML = view.current
-      ? renderDay(d, view.current, {
-          notes,
-          dates,
-          todayISO: todayISO(),
-          nowHHMM: nowHHMM(),
-          syncLabel: syncLabel(),
-        })
+      ? dayHTML(view.current, dates)
       : '<p class="empty">No days yet. Tap + to add an event.</p>';
   } else if (view.tab === "notes") {
-    $("#view-notes").innerHTML = renderNotesTab(d, notes);
+    $("#view-notes").innerHTML = renderNotesTab(d, S.notes());
   } else if (view.tab === "codes") {
     $("#view-codes").innerHTML = renderCodes(d);
   } else {
     renderMore(d);
   }
 }
+
+const dayHTML = (date, dates) =>
+  renderDay(S.state.data, date, {
+    notes: S.notes(),
+    dates,
+    todayISO: todayISO(),
+    nowHHMM: nowHHMM(),
+    syncLabel: syncLabel(),
+  });
 
 function renderMore(d) {
   $("#view-more").innerHTML = `${renderOverview(d)}
@@ -240,20 +242,77 @@ async function moreAction(action) {
 // Filled in by edit.js / export.js so this module stays wiring-only.
 export const handlers = {};
 
-// Swipe between days; touch-action: pan-y leaves vertical scroll alone.
-const swipe = { id: null, x: 0, y: 0 };
-$("#view-trip").addEventListener("pointerdown", (e) => {
-  if (e.pointerType === "mouse") return;
-  Object.assign(swipe, { id: e.pointerId, x: e.clientX, y: e.clientY });
+// Swipe between days: the day follows the finger with its neighbours peeking
+// in beside it. touch-action: pan-y leaves vertical scroll to the browser.
+const trip = $("#view-trip");
+const GAP = 24; // .main's side padding on both edges
+let drag = null;
+let settling = false;
+
+function startDrag() {
+  const dates = tripDates(S.state.data);
+  const i = dates.indexOf(view.current);
+  // Pin peeks to the viewport top; go() scrolls there after a change.
+  const top = Math.max(0, -trip.getBoundingClientRect().top);
+  drag.next = {};
+  for (const n of [-1, 1]) {
+    const date = dates[i + n];
+    if (!date) continue;
+    const el = document.createElement("div");
+    el.className = "peek";
+    el.inert = true;
+    el.style.cssText = `top:${top}px;left:calc(${n * 100}% + ${n * GAP}px)`;
+    el.innerHTML = dayHTML(date, dates);
+    trip.append(el);
+    drag.next[n] = el;
+  }
+}
+
+async function endDrag(e, cancelled) {
+  const { dx, t, next } = drag;
+  drag = null;
+  const n = dx < 0 ? 1 : -1;
+  const width = trip.offsetWidth;
+  const flick = Math.abs(dx) > 40 && e.timeStamp - t < 300;
+  const commit = !cancelled && next[n] && (Math.abs(dx) > width / 4 || flick);
+  const to = commit ? -n * (width + GAP) : 0;
+  settling = true;
+  const anim = trip.animate(
+    [{ transform: `translateX(${dx}px)` }, { transform: `translateX(${to}px)` }],
+    { duration: 220, easing: "cubic-bezier(.2,.7,.3,1)", fill: "forwards" },
+  );
+  await anim.finished.catch(() => {});
+  if (commit) step(n);
+  trip.style.transform = "";
+  for (const el of Object.values(next)) el.remove();
+  anim.cancel();
+  settling = false;
+}
+
+trip.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" || settling || !view.current) return;
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp, dx: 0 };
 });
-$("#view-trip").addEventListener("pointerup", (e) => {
-  if (e.pointerId !== swipe.id) return;
-  swipe.id = null;
-  const dx = e.clientX - swipe.x;
-  const dy = e.clientY - swipe.y;
-  if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) step(dx < 0 ? 1 : -1);
+trip.addEventListener("pointermove", (e) => {
+  if (e.pointerId !== drag?.id) return;
+  let dx = e.clientX - drag.x;
+  if (!drag.next) {
+    if (Math.abs(dx) < 10) return;
+    if (Math.abs(dx) < Math.abs(e.clientY - drag.y)) return (drag = null);
+    startDrag();
+  }
+  // Rubber-band past the first/last day.
+  if (!drag.next[dx < 0 ? 1 : -1]) dx *= 0.3;
+  drag.dx = dx;
+  trip.style.transform = `translateX(${dx}px)`;
 });
-$("#view-trip").addEventListener("pointercancel", () => (swipe.id = null));
+for (const type of ["pointerup", "pointercancel"]) {
+  trip.addEventListener(type, (e) => {
+    if (e.pointerId !== drag?.id) return;
+    if (drag.next) endDrag(e, type === "pointercancel");
+    else drag = null;
+  });
+}
 
 // Long-press a note to delete it.
 let holdTimer;
