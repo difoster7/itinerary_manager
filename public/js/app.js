@@ -1,5 +1,6 @@
 import { install as installEdit } from "./edit.js";
 import { install as installExport } from "./export.js";
+import { install as installImporter, pickupShare } from "./importer.js";
 import { openingDate, resumeDate, tripDates } from "./model.js";
 import {
   renderCodes,
@@ -44,6 +45,7 @@ export function rerender() {
   const online = S.conn.online;
   $("#banner").hidden = online;
   $("#fab-add").disabled = !online;
+  $("#fab-import").disabled = !online;
   $("#side-title").textContent = d.title;
   $("#side-sync").textContent = syncLabel();
   $("#daylist").innerHTML = renderDayList(d, dates, view.current);
@@ -90,6 +92,10 @@ function renderMore(d) {
 <div class="morelist">
   <button type="button" class="btn" data-action="snapshot">Download snapshot (HTML)</button>
   <button type="button" class="btn" data-action="print">Print</button>
+</div>
+<h2 class="sec">Claude</h2>
+<div class="morelist">
+  <button type="button" class="btn" data-action="claude">Anthropic API key${d.settings?.anthropicKey ? " · saved" : ""}</button>
 </div>
 <h2 class="sec">This device</h2>
 <div class="morelist">
@@ -146,6 +152,7 @@ async function afterRefresh(status) {
     show("app");
     rerender();
     if (status === "updated") toast("Updated");
+    pickupShare();
   } else if (status === "offline") {
     show("app");
     $("#day").innerHTML =
@@ -358,6 +365,7 @@ setInterval(() => {
 export const currentDate = () => view.current;
 installEdit(handlers, { currentDate });
 installExport(handlers);
+installImporter(handlers);
 
 // ---------- boot ----------
 

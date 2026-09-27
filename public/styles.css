@@ -210,7 +210,7 @@ h2.sec { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; 
 .conf b { font: 700 0.6rem/1 system-ui, sans-serif; color: var(--ink3); letter-spacing: 0.06em; text-transform: uppercase; }
 .k-flight { --c: var(--flight); } .k-bus { --c: var(--bus); } .k-stay { --c: var(--stay); }
 .k-trek { --c: var(--trek); } .k-activity { --c: var(--act); } .k-food { --c: var(--food); }
-.k-show { --c: var(--show); } .k-transfer { --c: var(--move); } .k-note { --c: var(--note); }
+.k-show { --c: var(--show); } .k-transfer { --c: var(--move); } .k-note, .k-other { --c: var(--note); }
 .row.k-note .ti { font-weight: 550; color: var(--ink2); }
 
 /* ---------- night & notes ---------- */
@@ -270,6 +270,8 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, 0.35); }
 .status { font-size: 0.8rem; padding: 6px 9px; border-radius: 8px; margin-top: 10px; }
 .status.ok { background: var(--okbg); color: var(--okink); }
 .status.warn { background: var(--warnbg); color: var(--warnink); }
+ul.status, .imported { padding-left: 26px; }
+.imported { font-size: 0.9rem; }
 .cmp { display: grid; gap: 10px; }
 .cmp pre { margin: 0; font-size: 0.75rem; background: var(--line2); padding: 8px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
 .histrow { display: flex; justify-content: space-between; gap: 10px; width: 100%; text-align: left; }

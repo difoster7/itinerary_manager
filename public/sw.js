@@ -1,7 +1,7 @@
 // Module service worker. The Worker replaces __APP_VERSION__ with the
 // deployment id, so every deploy changes this file and triggers an update.
 import { createApi } from "./js/api.js";
-import { all, del, get } from "./js/store.js";
+import { all, del, get, put } from "./js/store.js";
 import { flushOutbox } from "./js/sync.js";
 
 const APP_VERSION = "__APP_VERSION__";
@@ -19,7 +19,9 @@ const SHELL = [
   "/js/crypto.js",
   "/js/edit.js",
   "/js/export.js",
+  "/js/extract.js",
   "/js/ics.js",
+  "/js/importer.js",
   "/js/model.js",
   "/js/render.js",
   "/js/session.js",
@@ -54,6 +56,10 @@ self.addEventListener("activate", (e) => {
 // encrypted itinerary in IndexedDB instead.
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
+  if (e.request.method === "POST" && url.pathname === "/share") {
+    e.respondWith(stashShare(e.request));
+    return;
+  }
   if (
     e.request.method !== "GET" ||
     url.origin !== location.origin ||
@@ -69,6 +75,23 @@ self.addEventListener("fetch", (e) => {
       .then((hit) => hit || fetch(e.request)),
   );
 });
+
+// Android share target: keep the shared text/file for the app to import.
+async function stashShare(request) {
+  const form = await request.formData();
+  const file = form.get("file");
+  await put(
+    "kv",
+    {
+      title: form.get("title") || "",
+      text: form.get("text") || "",
+      file: file instanceof File && file.size ? file : null,
+      at: new Date().toISOString(),
+    },
+    "share",
+  );
+  return Response.redirect("/?shared=1", 303);
+}
 
 // Background Sync: upload queued notes when connectivity returns, even with
 // the app closed. The outbox is ciphertext, so only the token is needed.

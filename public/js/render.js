@@ -21,6 +21,7 @@ const PLURAL = {
   activity: ["activity", "activities"],
   food: ["meal", "meals"],
   show: ["event", "events"],
+  other: ["other item", "other items"],
   note: ["note", "notes"],
 };
 

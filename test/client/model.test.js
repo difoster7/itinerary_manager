@@ -266,3 +266,132 @@ describe("ensureIds", () => {
     expect(out.events[1].id).toBe("keep");
   });
 });
+
+describe("other kind and settings", () => {
+  it("accepts kind other", () => {
+    expect(M.validateItinerary(data([ev({ title: "x", kind: "other" })]))).toEqual([]);
+    expect(M.KIND_LABEL.other).toBe("Other");
+  });
+  it("accepts settings with a text key", () => {
+    const d = data([], { settings: { anthropicKey: "sk-x" } });
+    expect(M.validateItinerary(d)).toEqual([]);
+  });
+  it.each([
+    ["settings not an object", "x"],
+    ["key not text", { anthropicKey: 5 }],
+  ])("rejects %s", (_, settings) => {
+    expect(M.validateItinerary(data([], { settings })).length).toBe(1);
+  });
+});
+
+describe("mergeImport", () => {
+  const got = (o) => ({
+    date: "2026-11-16",
+    time: "11:08",
+    end: "14:26",
+    kind: "flight",
+    title: "LA800  SCL → PUQ",
+    sub: "",
+    where: "",
+    conf: "ABC123",
+    notes: [],
+    ...o,
+  });
+  const result = (o) => ({ events: [], nights: [], costs: [], warnings: [], ...o });
+
+  it("adds events with ids and drops empty optional fields", () => {
+    const r = M.mergeImport(data(), result({ events: [got({ time: "", end: "" })] }));
+    const [e] = r.next.events;
+    expect(e.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(e).toEqual({
+      id: e.id,
+      date: "2026-11-16",
+      time: "",
+      kind: "flight",
+      title: "LA800  SCL → PUQ",
+      conf: "ABC123",
+    });
+    expect(r.added.events).toEqual([e]);
+    expect(M.validateItinerary(r.next)).toEqual([]);
+  });
+
+  it("keeps non-empty sub, where, end and notes", () => {
+    const r = M.mergeImport(
+      data(),
+      result({ events: [got({ sub: "LATAM", where: "SCL", notes: ["Order 1"] })] }),
+    );
+    expect(r.next.events[0]).toMatchObject({
+      end: "14:26",
+      sub: "LATAM",
+      where: "SCL",
+      notes: ["Order 1"],
+    });
+  });
+
+  it("skips an event whose conf, date and kind already exist", () => {
+    const d = data([ev({ id: "x", date: "2026-11-16", kind: "flight", conf: "ABC123", title: "Old" })]);
+    const r = M.mergeImport(d, result({ events: [got()] }));
+    expect(r.next).toBe(d);
+    expect(r.added.events).toEqual([]);
+    expect(r.warnings).toEqual(["Already in the itinerary: LA800  SCL → PUQ (2026-11-16)"]);
+  });
+
+  it("skips a conf-less event matching date, time and title", () => {
+    const d = data([ev({ id: "x", date: "2026-11-16", time: "11:08", title: "Tour" })]);
+    const r = M.mergeImport(d, result({ events: [got({ conf: "", kind: "activity", title: "Tour" })] }));
+    expect(r.added.events).toEqual([]);
+  });
+
+  it("de-duplicates within one import", () => {
+    const r = M.mergeImport(data(), result({ events: [got(), got()] }));
+    expect(r.added.events.length).toBe(1);
+  });
+
+  it("sets only empty nights and warns on a different existing one", () => {
+    const d = data([], { nights: { "2026-11-16": { name: "Casa A" }, "2026-11-17": { name: "Casa B" } } });
+    const r = M.mergeImport(
+      d,
+      result({
+        nights: [
+          { date: "2026-11-16", name: "Casa A", sub: "", kind: "" },
+          { date: "2026-11-17", name: "Other", sub: "", kind: "" },
+          { date: "2026-11-18", name: "Casa A", sub: "Calle 1, Town", kind: "" },
+          { date: "2026-11-19", name: "In flight — A → B", sub: "", kind: "flight" },
+        ],
+      }),
+    );
+    expect(r.next.nights).toEqual({
+      "2026-11-16": { name: "Casa A" },
+      "2026-11-17": { name: "Casa B" },
+      "2026-11-18": { name: "Casa A", sub: "Calle 1, Town" },
+      "2026-11-19": { name: "In flight — A → B", kind: "flight" },
+    });
+    expect(r.added.nights).toEqual(["2026-11-18", "2026-11-19"]);
+    expect(r.warnings).toEqual(['Night of 2026-11-17 is already "Casa B"; kept it.']);
+  });
+
+  it("appends new cost rows and skips identical ones", () => {
+    const d = data([], { costs: [["Casa A", "US$100", "paid"]] });
+    const r = M.mergeImport(
+      d,
+      result({
+        costs: [
+          { item: "Casa A", amount: "US$100", status: "paid" },
+          { item: "Bus Sur → El Calafate", amount: "CLP 30,000", status: "" },
+        ],
+      }),
+    );
+    expect(r.next.costs).toEqual([
+      ["Casa A", "US$100", "paid"],
+      ["Bus Sur → El Calafate", "CLP 30,000", ""],
+    ]);
+    expect(r.added.costs).toBe(1);
+  });
+
+  it("passes model warnings through and returns the same data when nothing is added", () => {
+    const d = data();
+    const r = M.mergeImport(d, result({ warnings: ["Cancellation notice"] }));
+    expect(r.next).toBe(d);
+    expect(r.warnings).toEqual(["Cancellation notice"]);
+  });
+});

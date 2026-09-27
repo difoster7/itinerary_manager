@@ -86,13 +86,14 @@ paste / file / share ──► source {text?, file?}
 | File | Change |
 |---|---|
 | `public/js/extract.js` (new, no DOM) | `PROMPT`, `SCHEMA`, `buildRequest(source, ctx)`, `extract(source, ctx, {apiKey, fetch})` → result or throws `ExtractError(kind, message)` |
-| `public/js/import.js` (new, UI) | import sheet, file/drop/paste handling, pending-share pickup, pipeline runner, result sheet, undo |
+| `public/js/importer.js` (new, UI; named apart from the seed-import screen) | import sheet, file/drop/paste handling, pending-share pickup, pipeline runner, result sheet, undo |
 | `public/js/model.js` | `KINDS` + `"other"`, `KIND_LABEL.other = "Other"`, `mergeImport`, validate optional `settings` |
 | `public/js/render.js` | `PLURAL.other = ["other item", "other items"]` |
 | `public/styles.css` | `.k-other { --c: var(--note); }` |
-| `public/js/app.js` | Claude settings section, share pickup on launch, install `import.js` handlers |
+| `public/js/app.js` | Claude settings section, share pickup on launch, install `importer.js` handlers |
 | `public/index.html` | Import pill and desktop header button |
-| `public/sw.js` | `POST /share` handler; add `extract.js` and `import.js` to `SHELL` |
+| `public/sw.js` | `POST /share` handler; add `extract.js` and `importer.js` to `SHELL` |
+| `src/worker.js` | `POST /share` that bypassed the service worker → `303 /?shared=lost`; the app tells the user to share again |
 | `public/manifest.webmanifest` | `share_target` |
 | `tools/try-extract.mjs` (new) | dev harness: `node tools/try-extract.mjs <file-or-.txt>` prints the parsed result using `ANTHROPIC_API_KEY`, for prompt iteration |
 

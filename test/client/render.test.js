@@ -82,6 +82,11 @@ describe("other views", () => {
     expect(h).toContain("1 bus");
     expect(h).toContain("$1");
   });
+  it("renders and counts the other kind", () => {
+    const o = { ...d, events: [{ id: "o", date: "2026-11-18", time: "", kind: "other", title: "Locker" }] };
+    expect(R.renderDay(o, "2026-11-18", opts())).toContain("Other");
+    expect(R.renderOverview(o)).toContain("1 other item");
+  });
   it("day list marks the selected day", () => {
     const h = R.renderDayList(d, dates, "2026-11-19");
     expect(h).toMatch(/class="[^"]*\bon\b[^"]*"[^>]*data-date="2026-11-19"/);

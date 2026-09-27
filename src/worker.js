@@ -192,6 +192,10 @@ export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
     if (path === "/sw.js") return serviceWorker(request, env);
+    // sw.js normally handles share-target POSTs; without it the share is lost.
+    if (path === "/share") {
+      return Response.redirect(new URL("/?shared=lost", request.url), 303);
+    }
     if (path.startsWith("/api/")) {
       if (!(await authorized(request, env))) {
         return json({ error: "unauthorized" }, 401);

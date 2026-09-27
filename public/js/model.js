@@ -7,6 +7,7 @@ export const KINDS = [
   "activity",
   "food",
   "show",
+  "other",
   "note",
 ];
 export const KIND_LABEL = {
@@ -18,6 +19,7 @@ export const KIND_LABEL = {
   activity: "Activity",
   food: "Food",
   show: "Event",
+  other: "Other",
   note: "",
 };
 
@@ -81,6 +83,13 @@ export function validateItinerary(d) {
         errs.push(`Cost row ${i + 1}: must be a list of text or numbers`);
       }
     });
+  }
+  if (
+    d.settings !== undefined &&
+    (!isObj(d.settings) ||
+      !["undefined", "string"].includes(typeof d.settings.anthropicKey))
+  ) {
+    errs.push("settings must be an object with a text anthropicKey");
   }
   if (d.tz !== undefined && !/^[+-]\d{2}:\d{2}$/.test(d.tz)) {
     errs.push('tz must look like "-03:00"');
@@ -230,3 +239,69 @@ export function confRows(d) {
 
 export const summarize = (d) =>
   `${d.events.length} events · ${Object.keys(d.nights).length} nights`;
+
+const eventKey = (e) =>
+  e.conf
+    ? `${e.conf}\u0000${e.date}\u0000${e.kind}`
+    : `\u0000${e.date}\u0000${e.time || ""}\u0000${e.title}`;
+
+// Merges extracted bookings into `d`: new events get ids, duplicates and
+// already-set nights are skipped with a warning. `next` is `d` itself when
+// nothing was added.
+export function mergeImport(d, result) {
+  const warnings = [...result.warnings];
+  const seen = new Set(d.events.map(eventKey));
+  const events = [];
+  for (const x of result.events) {
+    const e = {
+      id: crypto.randomUUID(),
+      date: x.date,
+      time: x.time,
+      kind: x.kind,
+      title: x.title.trim(),
+    };
+    for (const k of ["end", "sub", "where", "conf"]) {
+      if (x[k].trim()) e[k] = x[k].trim();
+    }
+    if (x.notes.length) e.notes = x.notes;
+    if (seen.has(eventKey(e))) {
+      warnings.push(`Already in the itinerary: ${e.title} (${e.date})`);
+      continue;
+    }
+    seen.add(eventKey(e));
+    events.push(e);
+  }
+  const nights = { ...d.nights };
+  const addedNights = [];
+  for (const { date, name, sub, kind } of result.nights) {
+    if (nights[date]) {
+      if (nights[date].name !== name) {
+        warnings.push(
+          `Night of ${date} is already "${nights[date].name}"; kept it.`,
+        );
+      }
+      continue;
+    }
+    nights[date] = { name, ...(sub && { sub }), ...(kind && { kind }) };
+    addedNights.push(date);
+  }
+  const rows = new Set(d.costs.map((r) => JSON.stringify(r)));
+  const costs = [];
+  for (const { item, amount, status } of result.costs) {
+    const row = [item, amount, status];
+    if (rows.has(JSON.stringify(row))) continue;
+    rows.add(JSON.stringify(row));
+    costs.push(row);
+  }
+  const added = { events, nights: addedNights, costs: costs.length };
+  const next =
+    events.length || addedNights.length || costs.length
+      ? {
+          ...d,
+          events: [...d.events, ...events],
+          nights,
+          costs: [...d.costs, ...costs],
+        }
+      : d;
+  return { next, added, warnings };
+}

@@ -71,6 +71,26 @@ Then use More → Forget this device on each device and import the real seed.
 3. Open the app from the home screen and unlock it once while online.
 4. Check that More → the line at the bottom says **Storage: protected**. If it says "may be cleared", open the installed app a few more times; Chrome grants persistence to installed apps it sees used.
 
+## Importing confirmations
+
+Claude (`claude-sonnet-5`) turns a booking email, PDF or screenshot into events, nights and cost rows. The browser calls the Anthropic API directly; the Worker never sees the content.
+
+1. Create an API key at https://platform.claude.com/settings/keys.
+2. In the app: More → Claude → paste the key. It's stored encrypted in the itinerary and syncs to your devices. Old versions in the history keep old keys.
+3. Import:
+   - **Any device:** ⇪ Import, then paste text, choose a file, drop a file, or paste a screenshot.
+   - **Android (installed app):** select text in Gmail or open a PDF/screenshot → Share → Itinerary.
+
+Everything is saved as one version. The result sheet has **Undo**. Importing the same confirmation twice adds nothing.
+
+**Tuning the prompt** (`PROMPT` in `public/js/extract.js`). This makes a real API call:
+
+```sh
+ANTHROPIC_API_KEY=... node tools/try-extract.mjs <confirmation.pdf|.png|.txt> [seed/itinerary.json]
+```
+
+Keep real confirmations out of git.
+
 ## Local development
 
 ```sh
@@ -118,5 +138,9 @@ npm run test:worker  # API tests inside the Workers runtime with a local D1
 - [ ] Swiping between days doesn't interfere with vertical scroll.
 - [ ] The desktop two-pane layout is usable for planning edits.
 - [ ] Light and dark modes both look right; no horizontal scroll at 390 px.
+- [ ] Share a PDF from Gmail to Itinerary; the booking is added. Repeat with shared email text and with a screenshot.
+- [ ] Share while offline, then reopen online; the pending share is imported.
+- [ ] Undo removes everything one import added. Importing the same confirmation again adds nothing.
+- [ ] Desktop: paste text, drop a PDF, and paste a screenshot into the Import sheet.
 
 Tip: before the trip, add a throwaway event for today to see the TODAY/NEXT highlight, then delete it.
