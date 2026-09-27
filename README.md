@@ -75,7 +75,7 @@ Then use More → Forget this device on each device and import the real seed.
 
 Claude (`claude-sonnet-5`) turns a booking email, PDF or screenshot into events, nights and cost rows. The browser calls the Anthropic API directly; the Worker never sees the content.
 
-1. Create an API key at https://platform.claude.com/settings/keys.
+1. Create an API key at https://platform.claude.com/settings/keys. API credits are billed separately from a Claude subscription. Set **Scope** to a single workspace (for example "Default workspace"), not "Organization": an organization-scoped key would need a workspace header that the app doesn't send. An expiry just after the trip limits exposure if the key leaks.
 2. In the app: More → Claude → paste the key. It's stored encrypted in the itinerary and syncs to your devices. Old versions in the history keep old keys.
 3. Import:
    - **Any device:** ⇪ Import, then paste text, choose a file, drop a file, or paste a screenshot.

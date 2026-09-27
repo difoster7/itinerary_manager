@@ -89,8 +89,10 @@ kind: exactly one of
   other     a booking that fits none of the above
 
 title, sub and where depend on kind. Include only the parts the source
-states, keeping the order shown and dropping empty parts with their
-separator.
+states, in exactly the order shown, dropping empty parts with their
+separator. When the source names the operator or airline, sub starts
+with it. A price goes in sub only when it covers that one event; a total
+for several legs or events goes only in costs.
 
   flight
     title  "<airline code><flight number>  <origin IATA> → <destination
@@ -115,7 +117,8 @@ separator.
 
   transfer
     title  "<from> → <to>".
-    sub    "<operator> · <vehicle or service type> · <price>".
+    sub    "<operator> · <vehicle or service type> · <class>, seat <seat> ·
+           <price>".
     where  pickup point.
 
   stay
@@ -139,14 +142,17 @@ buses and tours. "" if none.
 
 notes: at most 4 items, one fact each, under 100 characters, in this
 priority order:
-  1. Other reference numbers as "<Label> <value>": "eTicket 0000000000000",
-     "Order 1234567", "Ticket 12345 · pickup code 123", "PIN 1234".
+  1. Required documents: passport, visa, ID, printed ticket.
   2. The "Arrives …" and "Departs just after midnight …" notes above.
-  3. Facts needed on the day: "Seat still unassigned", "Check-in window
-     12:00–24:00", amount due on arrival, free-cancellation deadline,
-     baggage allowance.
-  4. Meeting instructions or required documents stated by the provider.
-No advice, opinions, or anything the source does not state.
+  3. Codes needed on the day to get in or board, labelled as the source
+     labels them: "PIN 1234", "Pickup code 123".
+  4. Facts needed on the day: "Seat still unassigned", check-in cutoff
+     ("Check-in closes 60 min before departure"), check-in window
+     ("Check-in window 12:00–24:00"), amount due on arrival,
+     free-cancellation deadline, baggage allowance, meeting instructions.
+Never add booking, order, ticket or eTicket numbers: conf holds the one
+code that matters. No advice, opinions, or anything the source does not
+state.
 
 ## Style
 
