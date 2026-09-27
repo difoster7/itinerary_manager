@@ -44,8 +44,11 @@ nights:
   kind = "flight" for flights, "" otherwise.
 
 costs: one row per booking that states a total price.
-- item = the event title without "Check in — " (for lodging, the property
-  name).
+- item = for a single event, its title without "Check in — " (for
+  lodging, the property name). For a booking with several legs,
+  "<operator>  <first origin> → <final destination>", or
+  "<operator>  <origin> ⇄ <destination>" for a round trip, with TWO spaces
+  after the operator. Example: "Iberia  MAD → EZE".
 - amount = the total, formatted per Style below.
 - status = "paid" if the source says paid, charged or prepaid; "pay at
   property" or "pay on arrival" if it says so; otherwise "".
@@ -159,7 +162,8 @@ state.
 - English, even when the source is in Spanish or Portuguese. Keep proper
   names as printed.
 - Sentence case.
-- Use these characters exactly: → for routes; a spaced — inside titles; –
+- Use these characters exactly: → for routes; ⇄ for round trips in cost
+  items; a spaced — inside titles; –
   for ranges ("8–10 hrs", "12:00–24:00"); a spaced · between facts; ~ for
   approximate values.
 - Money: US dollars as "US$1,234.56"; other currencies as ISO code, space,
